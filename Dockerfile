@@ -4,25 +4,17 @@ FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
+ENV NO_AT_BRIDGE=1
+ENV GTK_A11Y=none
+ENV MALLOC_ARENA_MAX=2
 
-# Multi-arch support for Wine32
-RUN dpkg --add-architecture i386
-
-# Mozilla Firefox PPA
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    software-properties-common gnupg2 && \
-    add-apt-repository -y ppa:mozillateam/ppa && \
-    printf 'Package: firefox*\nPin: release o=LP-PPA-mozillateam\nPin-Priority: 1001\n' \
-    > /etc/apt/preferences.d/mozilla-firefox
-
-# KDE Plasma + XRDP + Wine + Firefox
+# ---- KDE Plasma + XRDP + Midori ----
 RUN apt-get update && apt-get install -y --no-install-recommends \
     xrdp \
     xorgxrdp \
     xserver-xorg-core \
     plasma-desktop \
     plasma-workspace \
-    plasma-session \
     konsole \
     dolphin \
     systemsettings \
@@ -33,33 +25,32 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     wget \
     ssl-cert \
-    wine \
-    wine32:i386 \
-    firefox \
+    ca-certificates \
+    midori \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# User setup
+# ---- User setup ----
 RUN echo "ubuntu:ubuntu" | chpasswd && \
     usermod -aG sudo ubuntu && \
     echo "ubuntu ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-# Xorg permissions
+# ---- Xorg permissions ----
 RUN echo "allowed_users=anybody" > /etc/X11/Xwrapper.config && \
     echo "needs_root_rights=no" >> /etc/X11/Xwrapper.config
 
-# XRDP optimization
+# ---- XRDP optimization ----
 RUN sed -i 's/crypt_level=high/crypt_level=low/' /etc/xrdp/xrdp.ini && \
     sed -i 's/security_layer=negotiate/security_layer=rdp/' /etc/xrdp/xrdp.ini && \
     sed -i 's/max_bpp=32/max_bpp=16/' /etc/xrdp/xrdp.ini && \
     sed -i 's/#tcp_send_buffer_size=32768/tcp_send_buffer_size=131072/' /etc/xrdp/xrdp.ini && \
     adduser xrdp ssl-cert
 
-# Disable KDE compositor for lower RAM usage
-RUN mkdir -p /home/ubuntu/.config/kwinrc.d && \
+# ---- Disable KDE compositor ----
+RUN mkdir -p /home/ubuntu/.config && \
     printf '[Compositing]\nEnabled=false\n' > /home/ubuntu/.config/kwinrc
 
-# KDE Plasma session
+# ---- KDE session ----
 RUN printf '#!/bin/sh\n\
 export XDG_CURRENT_DESKTOP=KDE\n\
 export XDG_SESSION_DESKTOP=KDE\n\
@@ -71,6 +62,7 @@ exec dbus-run-session startplasma-x11\n' > /home/ubuntu/.xsession && \
     cp /home/ubuntu/.xsession /home/ubuntu/.xsessionrc && \
     chown -R ubuntu:ubuntu /home/ubuntu
 
+# ---- Startup script ----
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
