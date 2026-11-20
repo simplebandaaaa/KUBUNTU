@@ -6,35 +6,35 @@ set -e
 RDP_PASSWORD="${RDP_PASSWORD:-ubuntu}"
 echo "ubuntu:${RDP_PASSWORD}" | chpasswd
 
-# ---- Home Setup ----
-mkdir -p /home/ubuntu/.config
+# ---- User home setup ----
+mkdir -p /home/ubuntu
 chown -R ubuntu:ubuntu /home/ubuntu
 
-# ---- KDE Session ----
-cat > /home/ubuntu/.xsession <<'EOF'
-#!/bin/sh
-export XDG_CURRENT_DESKTOP=KDE
-export XDG_SESSION_DESKTOP=KDE
-export DESKTOP_SESSION=plasma
-unset DBUS_SESSION_BUS_ADDRESS
-unset XDG_RUNTIME_DIR
-exec dbus-run-session startplasma-x11
-EOF
-
-chmod +x /home/ubuntu/.xsession
-cp /home/ubuntu/.xsession /home/ubuntu/.xsessionrc
-chown ubuntu:ubuntu /home/ubuntu/.xsession /home/ubuntu/.xsessionrc
-
-# ---- Runtime Directories ----
+# ---- Runtime directories ----
 mkdir -p /run/xrdp /var/run/dbus
 chmod 755 /run/xrdp
-rm -f /run/xrdp/*.pid
 
-# ---- DBus ----
-if ! pgrep -x dbus-daemon >/dev/null; then
-    dbus-daemon --system --fork
+# ---- Clean old PID files ----
+rm -f /run/xrdp/xrdp.pid
+rm -f /run/xrdp/xrdp-sesman.pid
+
+# ---- D-Bus ----
+if ! pgrep -x dbus-daemon >/dev/null 2>&1; then
+    service dbus start || true
 fi
 
-# ---- Start XRDP ----
+# ---- XRDP permissions ----
+adduser xrdp ssl-cert 2>/dev/null || true
+
+# ---- Start XRDP services ----
 /usr/sbin/xrdp-sesman
-exec /usr/sbin/xrdp --nodaemon
+/usr/sbin/xrdp
+
+echo "================================"
+echo "Kubuntu KDE Plasma RDP Started"
+echo "RDP Port: 3389"
+echo "Username: ubuntu"
+echo "================================"
+
+# ---- Keep container alive ----
+tail -f /dev/null
