@@ -2,15 +2,15 @@
 #!/bin/bash
 set -e
 
-# ---- User password ----
+# ---- Password ----
 RDP_PASSWORD="${RDP_PASSWORD:-ubuntu}"
 echo "ubuntu:${RDP_PASSWORD}" | chpasswd
 
-# ---- Home directory setup ----
-mkdir -p /home/ubuntu
+# ---- Home Setup ----
+mkdir -p /home/ubuntu/.config
 chown -R ubuntu:ubuntu /home/ubuntu
 
-# ---- KDE session setup ----
+# ---- KDE Session ----
 cat > /home/ubuntu/.xsession <<'EOF'
 #!/bin/sh
 export XDG_CURRENT_DESKTOP=KDE
@@ -25,13 +25,12 @@ chmod +x /home/ubuntu/.xsession
 cp /home/ubuntu/.xsession /home/ubuntu/.xsessionrc
 chown ubuntu:ubuntu /home/ubuntu/.xsession /home/ubuntu/.xsessionrc
 
-# ---- Runtime directories ----
+# ---- Runtime Directories ----
 mkdir -p /run/xrdp /var/run/dbus
 chmod 755 /run/xrdp
-
 rm -f /run/xrdp/*.pid
 
-# ---- Start DBus ----
+# ---- DBus ----
 if ! pgrep -x dbus-daemon >/dev/null; then
     dbus-daemon --system --fork
 fi
